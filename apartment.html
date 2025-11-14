@@ -1,0 +1,87 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MagicHome — Apartment</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-white text-gray-900">
+<header class="bg-white sticky top-0 z-30 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="text-2xl font-extrabold text-primary">MagicHome</div>
+    <nav class="hidden md:flex items-center gap-6 text-sm">
+      <a class="navlink" href="/index.html">Home</a>
+      <a class="navlink" href="/my-bookings.html">My Bookings</a>
+      <a class="navlink" href="/owner.html">Post Property</a>
+      <a class="navlink" href="/admin.html">Admin</a>
+      <a class="navlink" href="/login.html" id="loginBtn">Login</a>
+      <div id="profileBox" class="hidden text-sm">Logged in <button class="ml-2 underline" onclick="logout()">Logout</button></div>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <div id="content"></div>
+  <div id="similar" class="mt-10"></div>
+</main>
+
+<div id="lightbox"><img data-apartment alt="Apartment Image"></div>
+
+<script type="module">
+import {money, qs, updateAuthUI, clearToken, getToken} from '/assets/common.js';
+function logout(){ clearToken(); location.reload(); }
+const id = qs('id');
+function openLight(src){ const b=document.getElementById('lightbox'); document.getElementById('lightimg').src=src; b.style.display='flex'; b.onclick=()=>{ b.style.display='none'; }; }
+window.openLight = openLight;
+
+fetch('/api/apartments/'+id).then(r=>r.json()).then(d=>{
+  const imgs = JSON.parse(d.images);
+  document.getElementById('content').innerHTML = `
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 card bg-white overflow-hidden">
+        <div class="grid grid-cols-3 gap-2 p-2">
+          ${imgs.map(s=>`<img src="${s}" alt="Apartment Image">`).join('')}
+        </div>
+        <div class="p-4">
+          <h1 class="text-2xl font-bold">${d.title}</h1>
+          <div class="text-sm text-gray-600">${d.address}</div>
+          <div class="mt-2 text-primary font-bold">₹ ${money(d.rent)}/mo</div>
+          <div class="text-sm">${d.bhk} BHK · ${d.furnished ? "Furnished":"Unfurnished"} · ★ ${Number(d.rating).toFixed(1)}</div>
+          <p class="text-gray-700 mt-2">${d.description}</p>
+          <div class="mt-4"><a class="px-4 py-2 btn-primary rounded" href="/booking-form.html?apt=${encodeURIComponent(d.id)}">Book Now</a></div>
+          <div class="mt-6">
+            <h3 class="font-semibold">Reviews</h3>
+            <div id="reviews" class="space-y-2 mt-2">${(d.reviews||[]).map(r=>`<div class="text-sm bg-gray-50 p-2 rounded">★ ${r.rating} — ${r.comment||''} <span class="text-xs text-gray-500">by ${r.user_name||'User'}</span></div>`).join("")}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-white p-0 overflow-hidden">
+        <div id="map" style="height:520px;"></div>
+      </div>
+    </div>`;
+  const map = L.map('map').setView([d.lat, d.lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  L.marker([d.lat, d.lng]).addTo(map).bindPopup(d.title).openPopup();
+
+  const sim = d.similar||[];
+  document.getElementById('similar').innerHTML = sim.length ? `
+    <h3 class="text-xl font-semibold mb-3">Similar Flats in ${d.address.split(',')[1] || d.city}, ${d.city}</h3>
+    <div class="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
+      ${sim.map(it => {
+        const im = JSON.parse(it.images)[0];
+        return `
+        <a class="card bg-white overflow-hidden block" href="/apartment.html?id=${it.id}">
+          <div class="h-36 bg-gray-100"><img src="${JSON.parse(it.images)[0]}" alt="Apartment Image"></div>
+          <div class="p-3">
+            <div class="font-semibold text-sm line-clamp-1">${it.title}</div>
+            <div class="text-xs text-gray-600 mt-1">${it.address}</div>
+            <div class="text-xs text-primary font-bold mt-1">₹ ${money(it.rent)}/mo</div>
+          </div>
+        </a>`;}).join('')}
+    </div>` : "";
+});
+updateAuthUI();
+</script>
+</body></html>

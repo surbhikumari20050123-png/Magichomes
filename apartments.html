@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MagicHome — Apartments</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css"/>
+</head>
+<body class="bg-white text-gray-900">
+<header class="bg-white sticky top-0 z-30 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="text-2xl font-extrabold text-primary">MagicHome</div>
+    <nav class="hidden md:flex items-center gap-6 text-sm">
+      <a class="navlink" href="/index.html">Home</a>
+      <a class="navlink" href="/my-bookings.html">My Bookings</a>
+      <a class="navlink" href="/owner.html">Post Property</a>
+      <a class="navlink" href="/admin.html">Admin</a>
+      <a class="navlink" href="/login.html" id="loginBtn">Login</a>
+      <div id="profileBox" class="hidden text-sm">Logged in <button class="ml-2 underline" onclick="logout()">Logout</button></div>
+    </nav>
+  </div>
+</header>
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <h1 class="text-2xl font-bold mb-3">Apartments</h1>
+  <div class="card bg-white p-4 mb-4">
+    <div class="grid md:grid-cols-6 gap-3">
+      <select id="bhk" class="border p-2 rounded"><option value="">BHK</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+      <input id="minRent" type="number" placeholder="Min Rent" class="border p-2 rounded"/>
+      <input id="maxRent" type="number" placeholder="Max Rent" class="border p-2 rounded"/>
+      <label class="flex items-center gap-2"><input type="checkbox" id="furnished"/>Furnished</label>
+      <button class="px-4 py-2 btn-primary rounded-lg" onclick="reload()">Apply</button>
+    </div>
+  </div>
+  <div id="results" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  <div id="pager" class="mt-4 flex items-center gap-2"></div>
+</main>
+<script type="module">
+import {money, qs, updateAuthUI, clearToken} from '/assets/common.js';
+function logout(){ clearToken(); location.reload(); }
+const city = qs('city'); const locality = qs('locality'); const bhkInit = qs('bhk')||"";
+document.getElementById('bhk').value = bhkInit;
+let page=1, limit=12;
+function load(){
+  const params = new URLSearchParams({ city: city||"", locality: locality||"", page: String(page), limit: String(limit), bhk: document.getElementById('bhk').value||"" });
+  const mr = document.getElementById('minRent').value; const xr = document.getElementById('maxRent').value;
+  if(mr) params.set('minRent', mr); if(xr) params.set('maxRent', xr);
+  if(document.getElementById('furnished').checked) params.set('furnished', true);
+  fetch('/api/apartments?'+params.toString()).then(r=>r.json()).then(d=>{
+    const el = document.getElementById('results');
+    el.innerHTML = d.items.map(item => {
+      const img = JSON.parse(item.images)[0];
+      return `
+      <a class="card bg-white overflow-hidden block" href="/apartment.html?id=${item.id}">
+        <div class="h-40 bg-gray-100"><img src="${img}" alt="Apartment Image"></div>
+        <div class="p-3">
+          <div class="font-semibold text-sm line-clamp-1">${item.title}</div>
+          <div class="flex items-center justify-between mt-1">
+            <div class="text-xs text-gray-600">${item.address}</div>
+            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">★ ${Number(item.rating).toFixed(1)}</span>
+          </div>
+          <div class="text-xs text-primary font-bold mt-1">₹ ${money(item.rent)}/mo</div>
+        </div>
+      </a>`;
+    }).join('');
+    const TP = Math.ceil(d.total/d.limit);
+    document.getElementById('pager').innerHTML = TP>1 ?
+      `<button class="px-3 py-1 border rounded" ${page<=1?'disabled':''} onclick="prev()">Prev</button>
+       <span class="px-2">Page ${page} / ${TP}</span>
+       <button class="px-3 py-1 border rounded" ${page>=TP?'disabled':''} onclick="next()">Next</button>` : '';
+  });
+}
+window.prev = ()=>{ if(page>1){ page--; load(); } };
+window.next = ()=>{ page++; load(); };
+window.reload = ()=>{ page=1; load(); };
+load(); updateAuthUI();
+</script>
+</body></html>

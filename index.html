@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MagicHome — Find & Book Apartments</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css"/>
+</head>
+<body class="bg-white text-gray-900">
+<header class="bg-white sticky top-0 z-30 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="text-2xl font-extrabold text-primary">MagicHome</div>
+      <div class="badge">Modern UI</div>
+    </div>
+    <nav class="hidden md:flex items-center gap-6 text-sm">
+      <a class="navlink" href="/index.html">Home</a>
+      <a class="navlink" href="/apartments.html">Explore</a>
+      <a class="navlink" href="/my-bookings.html">My Bookings</a>
+      <a class="navlink" href="/owner.html">Post Property</a>
+      <a class="navlink" href="/admin.html">Admin</a>
+      <a class="navlink" href="/login.html" id="loginBtn">Login</a>
+      <div id="profileBox" class="hidden text-sm">Logged in <button class="ml-2 underline" onclick="logout()">Logout</button></div>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero py-14">
+    <div class="max-w-7xl mx-auto px-4">
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-3">Find your next home</h1>
+      <p class="text-gray-600 mb-6">Choose a city and locality to explore verified rentals.</p>
+      <div class="card bg-white p-4">
+        <div class="grid md:grid-cols-4 gap-3">
+          <select id="city" class="border rounded p-2"></select>
+          <select id="locality" class="border rounded p-2" disabled><option>Select city first</option></select>
+          <select id="bhk" class="border rounded p-2"><option value="">BHK</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+          <button class="px-4 py-2 btn-primary rounded-lg" onclick="goSearch()">Search</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-4 pb-16">
+    <h2 class="text-2xl font-bold mb-4">Featured Cities</h2>
+    <div id="cities" class="grid sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
+  </section>
+</main>
+
+<script type="module">
+import {getToken, clearToken, updateAuthUI} from '/assets/common.js';
+function logout(){ clearToken(); location.reload(); }
+window.logout = logout;
+
+const CITY_IMAGES = {
+   "Mumbai":"/assets/images/cities/mumbai.jpg",
+  "Delhi":"/assets/images/cities/delhi.jpg",
+  "Bengaluru":"/assets/images/cities/bengaluru.jpg",
+  "Pune":"/assets/images/cities/pune.jpg",
+  "Hyderabad":"/assets/images/cities/hyderabad.jpg",
+  "Chennai":"/assets/images/cities/chennai.jpg",
+  "Kolkata":"/assets/images/cities/kolkata.jpg",
+  "Ahmedabad":"/assets/images/cities/ahmedabad.jpg",
+  "Jaipur":"/assets/images/cities/jaipur.jpg",
+  "Lucknow":"/assets/images/cities/lucknow.jpg"
+};
+
+fetch('/api/meta/cities').then(r=>r.json()).then(meta=>{
+  const csel = document.getElementById('city'); const lsel = document.getElementById('locality');
+  csel.innerHTML = `<option value="">Select City</option>` + meta.items.map(x=>`<option>${x.city}</option>`).join('');
+  csel.onchange = ()=>{
+    const entry = meta.items.find(x=>x.city===csel.value);
+    if(entry){ lsel.disabled=false; lsel.innerHTML = entry.localities.map(l=>`<option>${l}</option>`).join(''); } else { lsel.disabled=true; lsel.innerHTML='<option>Select city first</option>'; }
+  };
+
+  const grid = document.getElementById('cities');
+  grid.innerHTML = meta.items.map(x=>`
+    <a class="city-card block" href="/apartments.html?city=${encodeURIComponent(x.city)}">
+      <img src="${CITY_IMAGES[x.city]||'https://source.unsplash.com/600x400/?city,india'}" alt="${x.city}"/>
+      <div class="overlay">Explore ${x.city}</div>
+    </a>`).join('');
+});
+
+window.goSearch = ()=>{
+  const city = document.getElementById('city').value;
+  const locality = document.getElementById('locality').value;
+  const bhk = document.getElementById('bhk').value;
+  const qs = new URLSearchParams({ city, locality, bhk }).toString();
+  location.href = '/apartments.html?'+qs;
+};
+
+updateAuthUI();
+</script>
+</body></html>
